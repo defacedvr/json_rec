@@ -31,7 +31,8 @@
 
 -export([
          to_rec/3,
-         to_json/2
+         to_json/2,
+         to_json/3
         ]).
 
 -include("json_rec_types.hrl").
@@ -51,6 +52,26 @@ to_json(Record, Module) ->
     Pl = rec_keys(Fields,Record,[Module],[]),
     {struct, Pl}.
 
+to_json(Record, Module, Skip) when is_list(Module) ->
+    Fields = module_rec_fields(Module,Record),
+    Pl = rec_keys(Fields, Record, Module, Skip, []),
+    {struct, Pl};
+
+to_json(Record, Module, Skip) ->
+    Fields = module_rec_fields([Module],Record),
+    Pl = rec_keys(Fields, Record, [Module], Skip, []),
+    {struct, Pl}.
+
+rec_keys([], _Record, _Module, _Skip, Acc) -> Acc;
+rec_keys([Field|Rest], Record, Module, Skip, Acc) ->
+    case module_get(Module, Field, Record) of
+        Skip ->
+            rec_keys(Rest, Record, Module, Skip, Acc);
+        Value ->
+            Key = list_to_binary(atom_to_list(Field)),
+            JsonValue = field_value(Value, Module, []),
+            rec_keys(Rest, Record, Module, Skip, [{Key,JsonValue}|Acc])
+    end.
 
 rec_keys([], _Record, _Module, Acc) -> Acc;
 rec_keys([Field|Rest],Record,Module,Acc) ->
